@@ -270,16 +270,10 @@ born-digital_middmag_finals-week_2011,a10_middmag_finals-week_2011.mp4,movies,"F
 
 ## Contact & Support
 
-If you have questions about using IA Templatizer for your archival project, or need help with advanced configuration, please contact your repository administrator or submit an issue to the project repository.
+If you have questions about using IA Templatizer for your archival project, or need help with advanced configuration, please submit an issue to the project repository.
 
 ---
 
 ## Further Customization
 
-IA Templatizer is designed to be modular and extensible. You can add new modules to the `codebase/` directory to support additional metadata standards, custom validation, or integration with other archival tools.
-
----
-
-## Questions?
-
-If you need clarification on any aspect of IA Templatizer, please ask! Information about your specific archival materials, metadata standards, or workflow requirements will help tailor
+IA Templatizer is designed to be modular and extensible. You can add new modules to the `codebase/` directory to support additional metadata standards, custom validation, or integrati
