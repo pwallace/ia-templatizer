@@ -4,7 +4,9 @@
 
 ## Overview
 
-**IA Templatizer** is a command-line tool for batch-generating metadata CSV files for Internet Archive workflows. It applies a user-defined metadata template (JSON) to an input CSV, filling in missing fields, generating standardized identifiers, expanding repeatable fields, and validating metadata. The output is a new CSV formatted for compatibility with Internet Archive CLI tools and Python library.
+**IA Templatizer** is a command-line tool for batch-generating metadata CSV files for Internet Archive workflows.  
+It applies a user-defined metadata template (JSON) to an input CSV, filling in missing fields, generating standardized identifiers, expanding repeatable fields, and validating metadata.  
+The output is a new CSV formatted for compatibility with Internet Archive CLI tools and Python library.
 
 This tool is designed for a wide range of archival materials, including historical photographs, scanned texts, audio/video, and born-digital data.
 
@@ -14,7 +16,8 @@ This tool is designed for a wide range of archival materials, including historic
 
 - **Template-driven metadata:** Fill in missing or default metadata from a JSON template.
 - **Identifier generation:** Automatically create standardized identifiers using template rules and file names.
-- **Repeatable fields:** Expand list fields (e.g., `subject`, `collection`) into indexed columns (`subject[0]`, `subject[1]`, etc.).
+- **Repeatable fields:** Expand list fields (e.g., `subject`, `collection`) into indexed columns (`subject[0]`, `subject[1]`, etc.), with template values first, then deduplicated input values.
+- **Input normalization:** Strips leading/trailing whitespace from all input CSV cell data before processing.
 - **Validation:** Checks for valid media types, license URLs, rights statements, and date formats.
 - **Custom column ordering:** Output CSV columns are ordered for Internet Archive workflows.
 - **Control fields:** Template control fields (e.g., `identifier-date`, `identifier-prefix`) affect behavior but are not included in the output unless explicitly specified.
@@ -23,46 +26,6 @@ This tool is designed for a wide range of archival materials, including historic
 - **Extensible codebase:** Modular Python scripts for easy customization and extension.
 
 ---
-
-## Dependencies
-
-IA Templatizer is written in Python 3 and relies only on standard Python libraries for its core functionality.  
-However, to run the script successfully, you must have:
-
-- **Python 3.7 or newer** installed on your system.
-- The following standard Python modules (included with Python):
-  - `os`
-  - `sys`
-  - `csv`
-  - `re`
-  - `json`
-  - `warnings`
-  - `time`
-
-No third-party packages are required for basic operation.
-
-### Optional: Development & Testing
-
-For code editing, testing, and debugging, you may find these tools helpful:
-
-- **Visual Studio Code** or another Python-aware IDE
-- **pytest** (for unit testing, if you wish to add tests)
-- **Git** (for version control)
-
-### Installation
-
-To check your Python version:
-
-```bash
-python3 --version
-```
-
-If you need to install Python, visit [python.org/downloads](https://www.python.org/downloads/).
-
----
-
-**Note:**  
-If you add new modules or features that require third-party packages, update this section to list those dependencies and provide installation instructions (e.g., using `pip install
 
 ## Usage
 
@@ -147,31 +110,38 @@ file,title,contributor,notes,date
 02baseball/anderson.jpg,"Middlebury College Baseball, 2002: Nate Anderson",Nate Anderson,"Do you know something about this photograph? Email us!",2020-05-02
 ```
 
+### Repeatable Fields in Input
+
+- If the input CSV contains a column named (case-insensitive) `subject`, `subjects`, or `keywords`, its contents are treated as individual semicolon-delimited values for the repeatable field `subject[n]`.
+- If the input CSV contains columns named `subject[0]`, `subject[1]`, etc., those are used directly.
+- The same logic applies for other repeatable fields (e.g., `collection`, `collection[0]`, etc.).
+
 ---
 
 ## Output CSV File Format
 
 The output CSV will contain:
 
-- All original columns from the input CSV.
+- All original columns from the input CSV, except for control fields and non-indexed repeatable fields (e.g., `subject`, `keywords`, `subjects`, `collection`).
 - Any fields from the template not present in the input (except control fields).
-- Repeatable fields expanded into indexed columns (e.g., `subject[0]`, `subject[1]`).
+- Repeatable fields expanded into indexed columns (e.g., `subject[0]`, `subject[1]`), with template values first, then deduplicated input values.
 - Columns ordered as follows:
   1. `identifier`
   2. `file`
   3. `mediatype`
-  4. `title`
-  5. `date`
-  6. `creator`
-  7. `description`
-  8. Repeatable fields (e.g., `collection[n]`, `subject[n]`)
-  9. Any other columns (in no specific order)
+  4. All `collection[n]` columns (in order)
+  5. `title`
+  6. `date`
+  7. `creator`
+  8. `description`
+  9. All `subject[n]` columns (in order)
+  10. Any other columns (in no particular order)
 
 Example output:
 
 ```csv
-identifier,file,mediatype,title,date,creator,description,collection[0],subject[0],subject[1],subject[2],rights,notes,rights-statement,inclusive-description-statement
-born-digital_middmag_finals-week_2011,a10_middmag_finals-week_2011.mp4,movies,"Finals Week",2011,"Middlebury College","Description here",middleburycollege,"Baseball","Team photos","Athletes",...,...,http://rightsstatements.org/vocab/CNE/1.0/,"This collection aims to represent diverse communities and experiences."
+identifier,file,mediatype,collection[0],collection[1],title,date,creator,description,subject[0],subject[1],subject[2],rights,notes,rights-statement,inclusive-description-statement
+born-digital_middmag_finals-week_2011,a10_middmag_finals-week_2011.mp4,movies,middleburycollege,specialcollection,"Finals Week",2011,"Middlebury College","Description here","Baseball","Team photos","Athletes",...,...,http://rightsstatements.org/vocab/CNE/1.0/,"This collection aims to represent diverse communities and experiences."
 ```
 
 ---
@@ -197,6 +167,7 @@ born-digital_middmag_finals-week_2011,a10_middmag_finals-week_2011.mp4,movies,"F
 - **Output directory does not exist:** The script will create the output directory if needed.
 - **Invalid flags:** If an unsupported flag is provided, the script will exit with an error and display allowed flags.
 - **Repeatable fields not expanded:** Ensure repeatable fields are lists in the template.
+- **Duplicate values in repeatable fields:** The script automatically deduplicates values for each repeatable field per row.
 
 ---
 
@@ -206,7 +177,7 @@ born-digital_middmag_finals-week_2011,a10_middmag_finals-week_2011.mp4,movies,"F
 
 - `ia-templatizer.py`: Main CLI script. Handles argument parsing, template and CSV loading, main processing loop, and output writing.
 - `codebase/template.py`: Functions for loading and validating template files.
-- `codebase/csvutils.py`: Functions for loading and writing CSV files.
+- `codebase/csvutils.py`: Functions for loading and writing CSV files, including whitespace normalization and deduplication utilities.
 - `codebase/identifier.py`: Identifier generation logic. Handles control fields, uniqueness, and formatting.
 - `codebase/fields.py`: Utility functions for repeatable fields, mediatype detection, and field normalization.
 - `codebase/expand_directories.py`: Handles directory expansion logic and writing expanded output sheets.
@@ -228,7 +199,7 @@ born-digital_middmag_finals-week_2011,a10_middmag_finals-week_2011.mp4,movies,"F
   - The main script will automatically expand it into indexed columns.
 
 - **Change output column order:**  
-  - Update the `base_order` list in `ia-templatizer.py` and pass it to `expand_directories.py`.
+  - Update the output column logic in `ia-templatizer.py` and `expand_directories.py`.
 
 - **Integrate with other tools:**  
   - Add new modules to the `codebase/` directory.
@@ -276,4 +247,46 @@ If you have questions about using IA Templatizer for your archival project, or n
 
 ## Further Customization
 
-IA Templatizer is designed to be modular and extensible. You can add new modules to the `codebase/` directory to support additional metadata standards, custom validation, or integrations.
+IA Templatizer is designed to be modular and extensible. You can add new modules to the `codebase/` directory to support additional metadata standards, custom validation, or integration with other archival tools.
+
+---
+
+## Dependencies
+
+IA Templatizer is written in Python 3 and relies only on standard Python libraries for its core functionality.  
+To run the script successfully, you must have:
+
+- **Python 3.7 or newer** installed on your system.
+- The following standard Python modules (included with Python):
+  - `os`
+  - `sys`
+  - `csv`
+  - `re`
+  - `json`
+  - `warnings`
+  - `time`
+
+No third-party packages are required for basic operation.
+
+### Optional: Development & Testing
+
+For code editing, testing, and debugging, you may find these tools helpful:
+
+- **Visual Studio Code** or another Python-aware IDE
+- **pytest** (for unit testing, if you wish to add tests)
+- **Git** (for version control)
+
+### Installation
+
+To check your Python version:
+
+```bash
+python3 --version
+```
+
+If you need to install Python, visit [python.org/downloads](https://www.python.org/downloads/).
+
+---
+
+**Note:**  
+If you add new modules or features that require third-party packages, update this section to list those dependencies and provide installation instructions (e.g., using `pip install <package>`).
