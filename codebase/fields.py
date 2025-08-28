@@ -1,58 +1,52 @@
 import re
+import mimetypes
 
 def get_repeatable_fields(template, non_repeatable_fields):
-    return [
-        field for field, value in template.items()
-        if isinstance(value, list) and field not in non_repeatable_fields
-    ]
+    return [k for k, v in template.items() if isinstance(v, list) and k not in non_repeatable_fields]
 
-def detect_mediatype(filename):
-    """
-    Detect the mediatype based on file extension.
-    Returns one of: 'movies', 'audio', 'image', 'texts', 'data'
-    """
-    ext = filename.lower().split('.')[-1]
-    # Movies
-    movie_exts = {'mp4', 'mov', 'avi', 'mpg', 'mpeg', 'ogv', 'wmv', 'mkv', 'webm', 'flv', 'm4v'}
-    # Audio
-    audio_exts = {'wav', 'mp3', 'flac', 'aac', 'ogg', 'wma', 'm4a', 'aiff', 'alac'}
-    # Images
-    image_exts = {'jpg', 'jpeg', 'tif', 'tiff', 'gif', 'bmp', 'png', 'webp', 'jp2', 'svg', 'heic'}
-    # Texts
-    text_exts = {'pdf', 'doc', 'docx', 'txt', 'rtf', 'odt', 'epub', 'csv', 'xls', 'xlsx', 'ppt', 'pptx'}
-    if ext in movie_exts:
+def detect_mediatype(filepath):
+    if not filepath:
+        return ""
+    ext = filepath.lower().split('.')[-1]
+    if ext in ['mp4', 'mov', 'avi', 'mkv']:
         return 'movies'
-    elif ext in audio_exts:
+    if ext in ['mp3', 'wav', 'flac', 'aac']:
         return 'audio'
-    elif ext in image_exts:
-        return 'image'
-    elif ext in text_exts:
+    if ext in ['pdf', 'epub', 'txt', 'doc', 'docx']:
         return 'texts'
-    else:
-        return 'data'
+    if ext in ['zip', 'tar', 'gz', 'rar']:
+        return 'software'
+    if ext in ['jpg', 'jpeg', 'png', 'gif', 'bmp', 'tiff']:
+        return 'image'
+    # fallback to mimetypes
+    mime, _ = mimetypes.guess_type(filepath)
+    if mime:
+        if mime.startswith('video'):
+            return 'movies'
+        if mime.startswith('audio'):
+            return 'audio'
+        if mime.startswith('image'):
+            return 'image'
+        if mime.startswith('application'):
+            return 'software'
+        if mime.startswith('text'):
+            return 'texts'
+    return ''
 
 def normalize_rights_statement_field(fieldname):
-    """Normalize rights-statement field names to 'rights-statement'."""
-    if fieldname.lower().replace('_', '').replace('-', '') in ['rightsstatement', 'rightsstatement']:
-        return 'rights-statement'
+    # Normalize rights-statement field names
+    if fieldname.lower().replace("_", "-") in ("rights-statement", "rightsstatement"):
+        return "rights-statement"
     return fieldname
 
-def is_valid_rights_statement(url):
-    """
-    Accepts only:
-    - URLs from rightsstatements.org (current statements)
-    - URLs for current Creative Commons licenses/dedications
-    """
-    # RightsStatements.org
-    rs_pattern = r'^https?://rightsstatements\.org/vocab/[A-Z]{3}/1\.0/?$'
-    # Creative Commons licenses/dedications
-    cc_pattern = r'^https?://creativecommons\.org/(licenses|publicdomain)/[a-z\-]+/[0-9\.]+/?$'
-    return bool(re.match(rs_pattern, url)) or bool(re.match(cc_pattern, url))
+def is_valid_rights_statement(val):
+    # Accept only valid rightsstatements.org URLs
+    if not isinstance(val, str):
+        return False
+    return val.startswith("http://rightsstatements.org/vocab/") or val.startswith("https://rightsstatements.org/vocab/")
 
-def is_valid_licenseurl(url):
-    """
-    Accepts only:
-    - URLs for current Creative Commons licenses/dedications
-    """
-    cc_pattern = r'^https?://creativecommons\.org/(licenses|publicdomain)/[a-z\-]+/[0-9\.]+/?$'
-    return bool(re.match(cc_pattern, url))
+def is_valid_licenseurl(val):
+    # Accept only valid Creative Commons URLs
+    if not isinstance(val, str):
+        return False
+    return val.startswith("https://creativecommons.org/") or val.startswith("http://creativecommons.org/")

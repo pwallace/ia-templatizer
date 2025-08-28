@@ -20,26 +20,18 @@ def is_valid_date(val):
     return isinstance(val, str) and bool(re.match(pattern, val))
 
 def generate_identifier(row, template, identifier_date, existing_identifiers=None):
-    """
-    Generate a sanitized, readable, unique identifier.
-    - Truncate to 80 chars at sensible delimiters if needed.
-    - If collision, append timestamp and increment counter.
-    """
     if existing_identifiers is None:
         existing_identifiers = set()
 
-    # Support both hyphen and underscore for identifier prefix
     identifier_prefix = template.get('identifier_prefix', template.get('identifier-prefix', ''))
     identifier_basename = template.get('identifier_basename', '')
     date_part = identifier_date if identifier_date else ''
 
-    # If identifier-date is "TRUE", use date from row if valid
     if isinstance(identifier_date, str) and identifier_date.upper() == "TRUE":
         date_val = row.get('date', '')
         if is_valid_date(date_val):
             date_part = date_val
 
-    # Use row['identifier'] if present, else file basename
     if 'identifier' in row and row['identifier']:
         base_id = sanitize_filename(row['identifier'])
     elif 'file' in row and row['file']:
@@ -49,14 +41,12 @@ def generate_identifier(row, template, identifier_date, existing_identifiers=Non
     else:
         base_id = 'item'
 
-    # If template basename is present, use it, else use base_id
     id_core = identifier_basename if identifier_basename else base_id
 
     parts = [identifier_prefix]
     if date_part:
         parts.append(date_part)
     parts.append(id_core)
-    # If using file basename, add it for uniqueness
     if not identifier_basename and base_id != id_core:
         parts.append(base_id)
     identifier = '_'.join([p for p in parts if p])

@@ -8,10 +8,17 @@ def load_csv(csv_path):
         raise FileNotFoundError(f"CSV file '{csv_path}' does not exist.")
     with open(csv_path, 'r', encoding='utf-8') as f:
         reader = csv.DictReader(f)
-        return [row for row in reader]
+        data = []
+        for row in reader:
+            # Strip whitespace from all cell values
+            clean_row = {k: v.strip() if isinstance(v, str) else v for k, v in row.items()}
+            data.append(clean_row)
+        return data
 
 def write_output_csv(output_path, output_data, fieldnames):
-    os.makedirs(os.path.dirname(output_path), exist_ok=True)
+    dirpath = os.path.dirname(output_path)
+    if dirpath:
+        os.makedirs(dirpath, exist_ok=True)
     with open(output_path, 'w', newline='', encoding='utf-8') as f:
         writer = csv.DictWriter(f, fieldnames=fieldnames)
         writer.writeheader()
@@ -70,3 +77,13 @@ def validate_csv(csv_data):
         for row in csv_data:
             if not is_valid_licenseurl(row['licenseurl']):
                 warnings.warn(f"Invalid license URL '{row['licenseurl']}' in CSV.")
+
+def dedupe_preserve_order(values):
+    seen = set()
+    result = []
+    for v in values:
+        v_stripped = v.strip() if isinstance(v, str) else v
+        if v_stripped not in seen:
+            seen.add(v_stripped)
+            result.append(v_stripped)
+    return result

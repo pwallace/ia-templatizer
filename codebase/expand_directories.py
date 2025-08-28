@@ -1,7 +1,8 @@
 import os
 import csv
 from identifier import generate_identifier
-from fields import get_repeatable_fields, detect_mediatype
+from fields import get_repeatable_fields, detect_mediatype, normalize_rights_statement_field
+from csvutils import dedupe_preserve_order
 
 def is_valid_file(filename):
     basename = os.path.basename(filename)
@@ -21,7 +22,33 @@ def list_directory_files(directory_path):
             files.append(full_path)
     return files
 
-def write_expanded_csv(base_output_path, directory_path, template, row, base_order):
+def get_repeatable_input(row, field):
+    # If subject[n] columns exist, use those values
+    n_keys = sorted([k for k in row.keys() if k.startswith(f"{field}[")], key=lambda x: int(x.split("[")[1].split("]")[0]))
+    vals = []
+    if n_keys:
+        for k in n_keys:
+            val = row[k]
+            if val:
+                vals.append(val.strip() if isinstance(val, str) else val)
+        for k in n_keys:
+            del row[k]
+    else:
+        # Otherwise, look for subject/subjects/keywords and split on semicolons
+        keys = [k for k in row.keys() if k.lower() == field or k.lower() == field + "s" or (field == "subject" and k.lower() == "keywords")]
+        for k in keys:
+            val = row[k]
+            if val:
+                if isinstance(val, list):
+                    vals.extend([v.strip() for v in val if isinstance(v, str) and v.strip()])
+                elif isinstance(val, str):
+                    vals.extend([v.strip() for v in val.split(";") if v.strip()])
+        for k in keys:
+            if k in row:
+                del row[k]
+    return vals
+
+def write_expanded_csv(base_output_path, directory_path, template, row):
     dir_name = os.path.basename(os.path.normpath(directory_path))
     base, ext = os.path.splitext(base_output_path)
     expanded_output_path = f"{base}_{dir_name}{ext}"
@@ -54,13 +81,21 @@ def write_expanded_csv(base_output_path, directory_path, template, row, base_ord
             if field not in new_row or not new_row[field]:
                 new_row[field] = value
 
+        # Mediatype detection logic (matches main script)
         if template.get('mediatype', '').upper() == 'DETECT':
             detected_type = detect_mediatype(new_row['file'])
-            new_row['mediatype'] = detected_type
+            if not detected_type or (new_row['file'] and os.path.isdir(new_row['file'])):
+                new_row['mediatype'] = 'data'
+            else:
+                new_row['mediatype'] = detected_type
 
-        for field, values in repeatable_field_values.items():
-            for i, item in enumerate(values):
-                new_row[f"{field}[{i}]"] = item
+        # Expand repeatable fields: template values first, then input values, deduped
+        for field in repeatable_fields:
+            template_vals = repeatable_field_values.get(field, [])
+            input_vals = get_repeatable_input(new_row, field)
+            all_vals = dedupe_preserve_order(list(template_vals) + input_vals)
+            for i, val in enumerate(all_vals):
+                new_row[f"{field}[{i}]"] = val
 
         for field in repeatable_fields:
             if field in new_row and isinstance(new_row[field], list):
@@ -75,14 +110,40 @@ def write_expanded_csv(base_output_path, directory_path, template, row, base_ord
 
         output_rows.append(new_row)
 
-    # Use base_order for output columns, then add any extras found in output_rows
+    # Build fieldnames for output: identifier, file, mediatype, collection[n], title, date, creator, description, subject[n], extras
     if output_rows:
         all_cols = set().union(*(row.keys() for row in output_rows))
-        extra_cols = [col for col in all_cols if col not in base_order and col not in control_fields]
-        output_fieldnames = base_order + extra_cols
+        exclude_subject_keys = {"subject", "subjects", "keywords"}
+        exclude_collection_keys = {"collection", "collections"}
+
+        collection_n_cols = sorted(
+            [col for col in all_cols if col.startswith("collection[")],
+            key=lambda x: int(x.split("[")[1].split("]")[0])
+        )
+        subject_n_cols = sorted(
+            [col for col in all_cols if col.startswith("subject[")],
+            key=lambda x: int(x.split("[")[1].split("]")[0])
+        )
+        extra_cols = [
+            col for col in all_cols
+            if col not in {
+                "identifier", "file", "mediatype", "title", "date", "creator", "description"
+            }
+            and col not in control_fields
+            and col.lower() not in exclude_subject_keys
+            and col.lower() not in exclude_collection_keys
+            and not col.startswith("subject[")
+            and not col.startswith("collection[")
+        ]
+
+        fieldnames = [
+            "identifier", "file", "mediatype"
+        ] + collection_n_cols + [
+            "title", "date", "creator", "description"
+        ] + subject_n_cols + extra_cols
 
         with open(expanded_output_path, 'w', newline='', encoding='utf-8') as f:
-            writer = csv.DictWriter(f, fieldnames=output_fieldnames)
+            writer = csv.DictWriter(f, fieldnames=fieldnames)
             writer.writeheader()
             for out_row in output_rows:
                 writer.writerow(out_row)
