@@ -7,7 +7,9 @@ def load_template(template_path):
     if not os.path.exists(template_path):
         raise FileNotFoundError(f"Template file '{template_path}' does not exist.")
     with open(template_path, 'r', encoding='utf-8') as f:
-        return json.load(f)
+        template = json.load(f)
+    validate_template(template)
+    return template
 
 def is_valid_date(val):
     if not isinstance(val, str):
@@ -20,13 +22,12 @@ def is_valid_url(url):
     return isinstance(url, str) and bool(re.match(url_pattern, url))
 
 def validate_template(template):
-    required_fields = ['identifier', 'mediatype']
-    missing_fields = [field for field in required_fields if field not in template]
-    if missing_fields:
-        warnings.warn(f"Template is missing required fields: {', '.join(missing_fields)}")
-
-    valid_mediatypes = ['movies', 'audio', 'texts', 'software', 'image']
-    if 'mediatype' in template and template['mediatype'] not in valid_mediatypes:
+    if "subject" not in template:
+        raise ValueError("Template must contain a 'subject' field.")
+    if not isinstance(template["subject"], list):
+        raise ValueError("Template 'subject' field must be a list (even if empty).")
+    valid_mediatypes = ['movies', 'audio', 'texts', 'software', 'image', 'data', 'DETECT']
+    if "mediatype" in template and template["mediatype"] not in valid_mediatypes:
         warnings.warn(f"Invalid mediatype '{template['mediatype']}' in template. Must be one of {valid_mediatypes}.")
 
     # Validate rights-statement

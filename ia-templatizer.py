@@ -44,6 +44,18 @@ def is_valid_url(url):
     url_pattern = r'^https?://[^\s]+$'
     return bool(re.match(url_pattern, url))
 
+def normalize_headers(headers):
+    # Lowercase and normalize rightsstatement → rights-statement
+    return [normalize_rights_statement_field(h.lower()) for h in headers]
+
+def normalize_template_fields(template):
+    # Lowercase all keys and normalize rightsstatement → rights-statement
+    norm_template = {}
+    for k, v in template.items():
+        norm_k = normalize_rights_statement_field(k.lower())
+        norm_template[norm_k] = v
+    return norm_template
+
 def validate_metadata_fields(metadata, context="row"):
     rs_val = metadata.get('rights-statement', metadata.get('rightsstatement', ''))
     if rs_val and not is_valid_rights_statement(rs_val):
@@ -74,9 +86,21 @@ def main():
             sys.exit(1)
     expand_dirs = '--expand-directories' in flags or '-E' in flags
 
+    # Load and normalize template
     template = load_template(template_path)
+    template = normalize_template_fields(template)
     validate_metadata_fields(template, context="template")
+
+    # Load CSV and normalize headers
     csv_data = load_csv(csv_path)
+    if csv_data:
+        # Normalize headers for all rows
+        orig_headers = list(csv_data[0].keys())
+        norm_headers = normalize_headers(orig_headers)
+        for row in csv_data:
+            for orig, norm in zip(orig_headers, norm_headers):
+                if orig != norm:
+                    row[norm] = row.pop(orig)
 
     # Control fields used for logic, not output (support both hyphen and underscore)
     control_fields = {
@@ -96,9 +120,7 @@ def main():
     output_data = []
     existing_identifiers = set()
 
-    # We'll collect subject[n] and collection[n] columns for final ordering
     def get_repeatable_input(row, field):
-        # If subject[n] columns exist, use those values
         n_keys = sorted([k for k in row.keys() if k.startswith(f"{field}[")], key=lambda x: int(x.split("[")[1].split("]")[0]))
         vals = []
         if n_keys:
@@ -106,11 +128,9 @@ def main():
                 val = row[k]
                 if val:
                     vals.append(val.strip() if isinstance(val, str) else val)
-            # Remove subject[n] columns from row
             for k in n_keys:
                 del row[k]
         else:
-            # Otherwise, look for subject/subjects/keywords and split on semicolons
             keys = [k for k in row.keys() if k.lower() == field or k.lower() == field + "s" or (field == "subject" and k.lower() == "keywords")]
             for k in keys:
                 val = row[k]
@@ -119,20 +139,13 @@ def main():
                         vals.extend([v.strip() for v in val if isinstance(v, str) and v.strip()])
                     elif isinstance(val, str):
                         vals.extend([v.strip() for v in val.split(";") if v.strip()])
-            # Remove original fields from row
             for k in keys:
                 if k in row:
                     del row[k]
         return vals
 
     for row in csv_data:
-        # Normalize field names
-        normalized_row = {}
-        for k, v in row.items():
-            norm_k = normalize_rights_statement_field(k)
-            normalized_row[norm_k] = v.strip() if isinstance(v, str) else v
-        row = normalized_row
-
+        # All keys are already normalized to lowercase and rights-statement
         # Expand all repeatable fields: template values first, then input values, deduped
         for field in repeatable_fields:
             template_vals = repeatable_field_values.get(field, [])
@@ -166,7 +179,6 @@ def main():
                     continue
                 if field not in new_row or not new_row[field]:
                     new_row[field] = value
-            # Expand repeatable fields for directory row
             for field in repeatable_fields:
                 template_vals = repeatable_field_values.get(field, [])
                 input_vals = get_repeatable_input(new_row, field)
@@ -198,13 +210,11 @@ def main():
         if template.get('mediatype', '').upper() == 'DETECT':
             file_val = new_row.get('file', '')
             detected_type = detect_mediatype(file_val)
-            # If file is a directory or unknown type, set mediatype to "data"
             if not detected_type or (file_val and os.path.isdir(file_val)):
                 new_row['mediatype'] = 'data'
             else:
                 new_row['mediatype'] = detected_type
 
-        # Expand repeatable fields for main output row
         for field in repeatable_fields:
             template_vals = repeatable_field_values.get(field, [])
             input_vals = get_repeatable_input(new_row, field)
@@ -212,12 +222,10 @@ def main():
             for i, val in enumerate(all_vals):
                 new_row[f"{field}[{i}]"] = val
 
-        # Remove original repeatable fields from output
         for field in repeatable_fields:
             if field in new_row and isinstance(new_row[field], list):
                 del new_row[field]
 
-        # Remove control fields from output
         for field in control_fields:
             if field in new_row:
                 del new_row[field]
@@ -252,7 +260,6 @@ def main():
         and not col.startswith("collection[")
     ]
 
-    # Insert collection[n] after mediatype, subject[n] after description
     fieldnames = [
         "identifier", "file", "mediatype"
     ] + collection_n_cols + [
