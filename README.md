@@ -24,6 +24,46 @@ This tool is designed for a wide range of archival materials, including historic
 
 ---
 
+## Dependencies
+
+IA Templatizer 2.0 is written in Python 3 and relies only on standard Python libraries for its core functionality.  
+However, to run the script successfully, you must have:
+
+- **Python 3.7 or newer** installed on your system.
+- The following standard Python modules (included with Python):
+  - `os`
+  - `sys`
+  - `csv`
+  - `re`
+  - `json`
+  - `warnings`
+  - `time`
+
+No third-party packages are required for basic operation.
+
+### Optional: Development & Testing
+
+For code editing, testing, and debugging, you may find these tools helpful:
+
+- **Visual Studio Code** or another Python-aware IDE
+- **pytest** (for unit testing, if you wish to add tests)
+- **Git** (for version control)
+
+### Installation
+
+To check your Python version:
+
+```bash
+python3 --version
+```
+
+If you need to install Python, visit [python.org/downloads](https://www.python.org/downloads/).
+
+---
+
+**Note:**  
+If you add new modules or features that require third-party packages, update this section to list those dependencies and provide installation instructions (e.g., using `pip install
+
 ## Usage
 
 ### Command
