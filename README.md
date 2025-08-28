@@ -26,7 +26,7 @@ This tool is designed for a wide range of archival materials, including historic
 
 ## Dependencies
 
-IA Templatizer 2.0 is written in Python 3 and relies only on standard Python libraries for its core functionality.  
+IA Templatizer is written in Python 3 and relies only on standard Python libraries for its core functionality.  
 However, to run the script successfully, you must have:
 
 - **Python 3.7 or newer** installed on your system.
@@ -270,16 +270,16 @@ born-digital_middmag_finals-week_2011,a10_middmag_finals-week_2011.mp4,movies,"F
 
 ## Contact & Support
 
-If you have questions about using IA Templatizer 2.0 for your archival project, or need help with advanced configuration, please contact your repository administrator or submit an issue to the project repository.
+If you have questions about using IA Templatizer for your archival project, or need help with advanced configuration, please contact your repository administrator or submit an issue to the project repository.
 
 ---
 
 ## Further Customization
 
-IA Templatizer 2.0 is designed to be modular and extensible. You can add new modules to the `codebase/` directory to support additional metadata standards, custom validation, or integration with other archival tools.
+IA Templatizer is designed to be modular and extensible. You can add new modules to the `codebase/` directory to support additional metadata standards, custom validation, or integration with other archival tools.
 
 ---
 
 ## Questions?
 
-If you need clarification on any aspect of IA Templatizer 2.0, please ask! Information about your specific archival materials, metadata standards, or workflow requirements will help tailor
+If you need clarification on any aspect of IA Templatizer, please ask! Information about your specific archival materials, metadata standards, or workflow requirements will help tailor
