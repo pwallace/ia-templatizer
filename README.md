@@ -4,7 +4,7 @@
 
 ## Overview
 
-**IA Templatizer** is a robust command-line tool for batch-generating metadata CSV files for Internet Archive workflows. It applies a user-defined metadata template (JSON) to an input CSV, filling in missing fields, generating standardized identifiers, expanding repeatable fields, and validating metadata. The output is a new CSV formatted for compatibility with Internet Archive CLI tools and Python library.
+**IA Templatizer** is a command-line tool for batch-generating metadata CSV files for Internet Archive workflows. It applies a user-defined metadata template (JSON) to an input CSV, filling in missing fields, generating standardized identifiers, expanding repeatable fields, and validating metadata. The output is a new CSV formatted for compatibility with Internet Archive CLI tools and Python library.
 
 This tool is designed for a wide range of archival materials, including historical photographs, scanned texts, audio/video, and born-digital data.
 
