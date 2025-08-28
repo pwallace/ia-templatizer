@@ -276,4 +276,4 @@ If you have questions about using IA Templatizer for your archival project, or n
 
 ## Further Customization
 
-IA Templatizer is designed to be modular and extensible. You can add new modules to the `codebase/` directory to support additional metadata standards, custom validation, or integrati
+IA Templatizer is designed to be modular and extensible. You can add new modules to the `codebase/` directory to support additional metadata standards, custom validation, or integrations.
